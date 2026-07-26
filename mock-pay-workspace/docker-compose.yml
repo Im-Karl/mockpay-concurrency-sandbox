@@ -1,0 +1,61 @@
+version: '3.8'
+
+services:
+  # 1. PostgreSQL - Cơ sở dữ liệu chính
+  postgres:
+    image: postgres:15-alpine
+    container_name: mockpay-postgres
+    environment:
+      POSTGRES_DB: mockpay_db
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev_password
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dev_user -d mockpay_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 2. Redis - Bộ nhớ đệm, Rate Limiting & Fast-path Idempotency
+  redis:
+    image: redis:7-alpine
+    container_name: mockpay-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # 3. RabbitMQ - Message Broker đồng bộ Outbox
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: mockpay-rabbitmq
+    ports:
+      - "5672:5672"     # Cổng AMQP kết nối ứng dụng
+      - "15672:15672"   # Giao diện quản trị Admin Web UI
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 5
+
+  # 4. Prometheus - Thu thập metric giám sát hiệu năng
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: mockpay-prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml
+
+volumes:
+  pgdata:
+    driver: local
