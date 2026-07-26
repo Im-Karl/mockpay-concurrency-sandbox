@@ -10,16 +10,16 @@ This platform simulates a mock payment gateway utilizing a multi-layered defense
 
 ```mermaid
 graph TD
-    Client[React Dashboard / CLI Script] -->|HTTP Requests| Gateway[NestJS Gateway Worker]
-    Gateway -->|1. Sliding Window Rate Limit| Redis[(Redis Cache)]
-    Gateway -->|2. Idempotency Check (Fast-path)| Redis
-    Gateway -->|3. Forward Requests| Core[Spring Boot Transaction Core]
-    Core -->|4. Execute Wallet Deduction| Postgres[(PostgreSQL)]
-    Core -->|5. Enforce DB Constraints (Slow-path)| Postgres
-    Core -->|6. Write Outbox Event| Postgres
-    CorePub[Outbox Scheduler] -->|7. Poll & Publish| Rabbit[RabbitMQ Broker]
-    WebhookWorker[Webhook Consumer] -->|8. Consume Event| Rabbit
-    WebhookWorker -->|9. Dispatch Webhook Callback| Client
+    Client["React Dashboard / CLI Script"] -->|"HTTP Requests"| Gateway["NestJS Gateway Worker"]
+    Gateway -->|"1. Sliding Window Rate Limit"| Redis[("Redis Cache")]
+    Gateway -->|"2. Idempotency Check (Fast-path)"| Redis
+    Gateway -->|"3. Forward Requests"| Core["Spring Boot Transaction Core"]
+    Core -->|"4. Execute Wallet Deduction"| Postgres[("PostgreSQL")]
+    Core -->|"5. Enforce DB Constraints (Slow-path)"| Postgres
+    Core -->|"6. Write Outbox Event"| Postgres
+    CorePub["Outbox Scheduler"] -->|"7. Poll & Publish"| Rabbit[("RabbitMQ Broker")]
+    WebhookWorker["Webhook Consumer"] -->|"8. Consume Event"| Rabbit
+    WebhookWorker -->|"9. Dispatch Webhook Callback"| Client
 ```
 
 ---
