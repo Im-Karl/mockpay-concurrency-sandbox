@@ -24,6 +24,14 @@ graph TD
 
 ---
 
+## Video demo
+
+
+
+https://github.com/user-attachments/assets/baf382a4-7930-4c23-9bd0-b2867f36f645
+
+
+
 ## Key Technical Features
 
 ### 1. Concurrency Control (Wallet Deductions)
