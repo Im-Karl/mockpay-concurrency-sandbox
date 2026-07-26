@@ -1,12 +1,12 @@
 # Dependency directories
-node_modules/
+mock-pay-workspace/**/node_modules/
 /jspm_packages/
 
 # Build outputs
-dist/
+mock-pay-workspace/**/dist/
 tmp/
 out/
-target/
+mock-pay-workspace/**/target/
 build/
 
 # IDEs and editors

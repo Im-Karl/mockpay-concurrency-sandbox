@@ -71,21 +71,21 @@ This spins up PostgreSQL (port 5432), Redis (port 6379), and RabbitMQ (port 5672
 
 ### Step 2: Run Spring Boot Backend
 ```bash
-cd transaction-core-service
+cd mock-pay-workspace/transaction-core-service
 mvn spring-boot:run
 ```
 *The core backend runs at `http://localhost:8080`.*
 
 ### Step 3: Run NestJS Gateway & Webhook Worker
 ```bash
-cd gateway-worker-service
+cd mock-pay-workspace/gateway-worker-service
 npm run start:dev
 ```
 *The gateway service runs at `http://localhost:3000`.*
 
 ### Step 4: Start Developer Dashboard
 ```bash
-cd developer-dashboard
+cd mock-pay-workspace/developer-dashboard
 npm run dev
 ```
 *Access the UI at `http://localhost:5173`.*
@@ -94,7 +94,7 @@ npm run dev
 
 ## Simulation & Testing Scenarios
 
-You can trigger tests directly from the **React Developer Dashboard** or execute the standalone Node.js scripts under the `/stress-test` directory:
+You can trigger tests directly from the **React Developer Dashboard** or execute the standalone Node.js scripts under the `mock-pay-workspace/stress-test` directory:
 
 ### Test Case 1: Overselling / Race Condition Test
 Simulates 200 concurrent requests attempting to deduct 200,000 VND from a 1,000,000 VND wallet.
@@ -103,7 +103,7 @@ Simulates 200 concurrent requests attempting to deduct 200,000 VND from a 1,000,
 *   **Atomic**: Exactly 5 transactions succeed with minimal latency (<35ms), proving high performance and database safety.
 
 ```bash
-cd stress-test
+cd mock-pay-workspace/stress-test
 node overselling-test.js [traditional | pessimistic | atomic]
 ```
 
@@ -113,6 +113,6 @@ Simulates sending 200 concurrent requests with the same `X-Idempotency-Key`.
 *   **Bypass Redis (Slow-path)**: 1 succeeds, 199 are blocked by PostgreSQL unique index returning `500 Internal Server Error` (slow-path safety).
 
 ```bash
-cd stress-test
+cd mock-pay-workspace/stress-test
 node idempotency-test.js [bypass]
 ```
