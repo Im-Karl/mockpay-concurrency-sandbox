@@ -7,7 +7,7 @@ import {
   BadRequestException,
   Inject,
 } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import { Observable, catchError, throwError } from 'rxjs';
 import Redis from 'ioredis';
 
 @Injectable()
@@ -16,15 +16,13 @@ export class IdempotencyInterceptor implements NestInterceptor {
     @Inject('REDIS_CLIENT') private readonly redis: Redis,
   ) {}
 
-  async intercept(
+  intercept(
     context: ExecutionContext,
     next: CallHandler,
-  ): Promise<Observable<any>> {
+  ): Observable<any> {
     const request = context.switchToHttp().getRequest();
     const idempotencyKey = request.headers['x-idempotency-key'];
-    const bypassRedis = request.query.bypassRedis === 'true';
 
-    // Only enforce idempotency checks on charge/deduction endpoints
     if (!request.url.includes('/deduct')) {
       return next.handle();
     }
@@ -33,15 +31,13 @@ export class IdempotencyInterceptor implements NestInterceptor {
       throw new BadRequestException({ error: 'Missing X-Idempotency-Key header' });
     }
 
-    // Bypass Redis check to force database unique constraint check (slow-path testing)
+    const bypassRedis = request.query.bypassRedis === 'true';
     if (bypassRedis) {
       return next.handle();
     }
 
     const redisKey = `idempotency:${idempotencyKey}`;
-    
-    // Acquire idempotency lock using SETNX with 60s TTL
-    const acquired = await this.redis.set(redisKey, 'PROCESSING', 'EX', 60, 'NX');
+    const acquired = this.redis.set(redisKey, 'PROCESSING', 'EX', 60, 'NX');
 
     if (!acquired) {
       throw new ConflictException({
@@ -49,6 +45,11 @@ export class IdempotencyInterceptor implements NestInterceptor {
       });
     }
 
-    return next.handle();
+    return next.handle().pipe(
+      catchError((err) => {
+        this.redis.del(redisKey).catch(() => {});
+        return throwError(() => err);
+      })
+    );
   }
 }
