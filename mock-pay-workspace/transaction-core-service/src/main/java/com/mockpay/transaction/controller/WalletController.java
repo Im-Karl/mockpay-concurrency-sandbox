@@ -19,7 +19,9 @@ import java.util.Map;
 @RestController
 @RequestMapping("/api/wallets")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*")
+// TODO: Thay @CrossOrigin("*") bằng CORS cấu hình đúng origin production.
+// TODO: Thêm Spring Security + JWT để bảo vệ endpoint này.
+
 public class WalletController {
 
     private final PaymentService paymentService;
