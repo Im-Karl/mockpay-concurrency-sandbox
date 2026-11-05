@@ -10,6 +10,22 @@ import Redis from 'ioredis';
 
 @Injectable()
 export class RateLimiterGuard implements CanActivate {
+  private static readonly SLIDING_WINDOW_LUA = `
+    local key = KEYS[1]
+    local now = tonumber(ARGV[1])
+    local window = tonumber(ARGV[2])
+    local limit = tonumber(ARGV[3])
+
+    redis.call('ZREMRANGEBYSCORE', key, 0, now - window)
+    local count = redis.call('ZCARD', key)
+    if count >= limit then
+      return 0
+    end
+    redis.call('ZADD', key, now, now .. ':' .. math.random())
+    redis.call('EXPIRE', key, window + 1)
+    return 1
+  `;
+
   constructor(
     @Inject('REDIS_CLIENT') private readonly redis: Redis,
   ) {}
@@ -18,39 +34,32 @@ export class RateLimiterGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const clientKey = request.params.id || request.ip || 'anonymous';
     const key = `rate:${clientKey}`;
-    const currentSecond = Math.floor(Date.now() / 1000);
-    const windowStart = currentSecond - 60;
+    const now = Math.floor(Date.now() / 1000);
+    const window = 60;
+    const limit = 1000;
 
     try {
-      // 1. Clean up expired sliding window buckets (older than 60s)
-      const fields = await this.redis.hkeys(key);
-      for (const field of fields) {
-        if (parseInt(field, 10) < windowStart) {
-          await this.redis.hdel(key, field);
-        }
-      }
+      const allowed = await this.redis.eval(
+        RateLimiterGuard.SLIDING_WINDOW_LUA,
+        1,
+        key,
+        now,
+        window,
+        limit,
+      );
 
-      // 2. Calculate total requests in the active sliding window
-      const allRequests = await this.redis.hvals(key);
-      const total = allRequests.reduce((sum, val) => sum + parseInt(val, 10), 0);
-
-      if (total >= 1000) {
+      if (allowed === 0) {
         throw new HttpException(
-          { error: 'Too many requests. Rate limit exceeded (1000 req/min). Please try again later.' },
+          { error: 'Too many requests. Rate limit exceeded (1000 req/min).' },
           HttpStatus.TOO_MANY_REQUESTS,
         );
       }
-
-      // 3. Record new request in the current second's bucket
-      await this.redis.hincrby(key, currentSecond.toString(), 1);
-      await this.redis.expire(key, 120); // Keep memory footprint clean with 120s TTL
       return true;
     } catch (error) {
       if (error instanceof HttpException) {
         throw error;
       }
-      console.error('Rate limiter exception:', error.message);
-      return true; // Graceful degradation: allow requests if Redis is unavailable
+      return true;
     }
   }
 }
